@@ -12,3 +12,11 @@ path = "intro_generics.rs"
 [[bin]]
 name = "intro_expressions"
 path = "intro_expressions.rs"
+
+[[bin]]
+name = "intro_binding"
+path = "intro_binding.rs"
+
+[[bin]]
+name = "intro_datatypes"
+path = "intro_datatypes.rs"
