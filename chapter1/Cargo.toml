@@ -3,8 +3,6 @@ name = "chapter1"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-
 [[bin]]
 name = "intro_generics"
 path = "intro_generics.rs"
