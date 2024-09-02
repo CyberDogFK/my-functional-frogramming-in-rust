@@ -18,3 +18,20 @@ path = "intro_binding.rs"
 [[bin]]
 name = "intro_datatypes"
 path = "intro_datatypes.rs"
+
+[[bin]]
+name = "itro_mixoopfp"
+path = "intro_mixoopfp.rs"
+
+[[bin]]
+name = "intro_patterns"
+path = "intro_patterns.rs"
+
+[[bin]]
+name = "intro_metaprogramming"
+path = "intro_metaprogramming.rs"
+
+[dependencies]
+cached = "0.53.1"
+lazy_static = "1.5.0"
+metaderive = { path = "metaderive"}
