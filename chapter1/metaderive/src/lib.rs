@@ -3,9 +3,8 @@ extern crate proc_macro;
 extern crate syn;
 #[macro_use] extern crate quote;
 use proc_macro::TokenStream;
-use std::fmt::format;
 use std::ops::Add;
-use syn::{switch, Data};
+use syn::{Data};
 
 #[proc_macro_derive(TypeName)]
 pub fn type_name(input: TokenStream) -> TokenStream {
@@ -31,19 +30,15 @@ fn impl_typename(ast: &syn::DeriveInput) -> quote::Tokens {
         Data::Enum(_) => {}
         Data::Union(_) => {}
     }
-    
     let result_string = match fields {
         None => "no fields".to_string(),
         Some(fields) => fields.iter().fold(String::new(), |f, u| f.add(u.as_ref()).add(" "))
     };
-    
-    
     quote! {
         impl TypeName for #name {
             fn typename() -> String {
                 stringify!(#name).to_string()
             }
-            
             fn attributes(&self) -> String {
                 #result_string.to_string()
             }

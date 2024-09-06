@@ -13,6 +13,19 @@ struct MyStructA {
     b: f32
 }
 
+// so, if we want to add few more derives, we just can 'write' one more impl block
+impl MyStructA {
+    fn additional_impl() -> String {
+        "impl".to_string()
+    }
+}
+
+impl MyStructA {
+    fn some_more_impl(&self) -> String {
+        "some_more-impl".to_string()
+    }
+}
+
 macro_rules! my_vec_macro {
     ( $( $x:expr ),*) => {
         {
@@ -62,5 +75,7 @@ fn main() {
 
     let tn = MyStructA { a: 1, b: 2.0 };
     println!("{}", MyStructA::typename());
+    println!("{}", MyStructA::additional_impl());
     println!("{}", tn.attributes());
+    println!("{}", tn.some_more_impl());
 }
