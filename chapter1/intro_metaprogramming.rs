@@ -3,6 +3,8 @@ extern crate metaderive;
 
 pub trait TypeName {
     fn typename() -> String;
+    
+    fn attributes(&self) -> String;
 }
 
 #[derive(TypeName)]
@@ -52,4 +54,13 @@ fn main() {
     my_vec_macro!(1, 2, 3);
     my_macro_branch!(1 "abc");
     my_macro_branch!(2 "def");
+
+    dsl!( a );
+    dsl!( fn a . a );
+    dsl!( f a );
+    dsl!( (f a) );
+
+    let tn = MyStructA { a: 1, b: 2.0 };
+    println!("{}", MyStructA::typename());
+    println!("{}", tn.attributes());
 }
