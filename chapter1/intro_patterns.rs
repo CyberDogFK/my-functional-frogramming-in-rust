@@ -19,7 +19,8 @@ trait Monad<A> {
     // :: A -> Monad<A>
 
     fn bind<MB, B>(m: Self, f: dyn Fn(A) -> MB) -> MB
-    where MB: Monad<B>;
+    where
+        MB: Monad<B>;
     // :: Monad<A> -> (A -> Monad<B>) -> Monad<B>
 }
 
@@ -33,14 +34,16 @@ fn curried(p1: u32) -> Box<dyn Fn(u32) -> u32> {
 }
 
 // Memoization
-#[macro_use] extern crate cached;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate cached;
+#[macro_use]
+extern crate lazy_static;
 
 cached! {
     FIB;
     fn fib(n: u64) -> u64 = {
         if n == 0 || n == 1 { return n; }
-        fib(b - 1) + fib(n - 2)
+        fib(n - 1) + fib(n - 2)
     }
 }
 
@@ -53,18 +56,24 @@ fn main() {
 
     // functors (take data, mutate it and return mutated data(nor changing original data, as I understand)
     let mut c = 0;
-    for _ in vec!['a', 'b', 'c'].into_iter()
-        .map(|letter| {
-            c += 1; (letter, c)
-        }){};
+    for _ in vec!['a', 'b', 'c'].into_iter().map(|letter| {
+        c += 1;
+        (letter, c)
+    }) {}
 
     // Function currying
     not_curried(1, 2);
     curried(1)(2);
 
     // lazy evaluation
-    let x = { println!("side effect"); 1 + 2 };
-    let y = || { println!("side effect"); 1 + 2}; // <- lazy
+    let x = {
+        println!("side effect");
+        1 + 2
+    };
+    let y = || {
+        println!("side effect");
+        1 + 2
+    }; // <- lazy
 
     // memoization
     fib(30);
