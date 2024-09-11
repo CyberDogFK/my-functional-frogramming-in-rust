@@ -1,26 +1,29 @@
 extern crate floating_duration;
 
-use std::{env, io, thread, time};
+use std::{cmp, env, io, thread, time};
 use std::fs::File;
 use std::io::Read;
+use std::io::Write;
 use std::time::Instant;
 use floating_duration::TimeAsFloat;
+use termion::{clear, cursor};
+use termion::raw::IntoRawMode;
 
 pub fn run_simulation() {
     // 1. Store location, velocity, and acceleration state
     let mut location: f64 = 0.0; //meters
     let mut velocity: f64 = 0.0; // meters per second
     let mut acceleration: f64 = 0.0; // meters per second squared
-    
+
     // 2. Store motor input voltage
     let mut up_input_voltage: f64 = 0.0;
     let mut down_input_voltage: f64 = 0.0;
-    
+
     // 3. Store input building description and floor requests
     let mut floor_count: u64 = 0;
     let mut floor_height: f64 = 0.0; // meters
     let mut floor_requests: Vec<u64> = Vec::new();
-    
+
     // 4. Parse input and store as building description and floor requests
     let buffer = match env::args().nth(1) {
         Some(ref fp) if *fp == "-".to_string() => {
@@ -47,7 +50,7 @@ pub fn run_simulation() {
             buffer
         }
     };
-    
+
     for (li, l) in buffer.lines().enumerate() {
         if li == 0 {
             floor_count = l.parse::<u64>().unwrap();
@@ -57,16 +60,24 @@ pub fn run_simulation() {
             floor_requests.push(l.parse::<u64>().unwrap());
         }
     }
-    
+
+
     // 5. Loop while there are remaining floor requests
     let mut prev_loop_time = Instant::now();
+    let termsize = termion::terminal_size().ok();
+    let termwidth = termsize.map(|(w, _) | w - 2).expect("termwidth") as u64;
+    let termheight = termsize.map(|(_, h)| h - 2).expect("termheight") as u64;
+    let mut _stdout = io::stdout(); // lock once, instead of once per write
+    let mut stdout = _stdout.lock().into_raw_mode().unwrap();
+
+
     while  floor_requests.len() > 0 {
         // 5.1. Update location, velocity, and acceleration
         let now = Instant::now();
         let dt = now.duration_since(prev_loop_time)
             .as_fractional_secs();
         prev_loop_time = now;
-        
+
         location = location + velocity * dt;
         velocity = velocity + acceleration * dt;
         acceleration = {
@@ -78,33 +89,33 @@ pub fn run_simulation() {
 
         // 5.2. If next floor request in queue is satisfied, then remove from queue
         let next_floor = floor_requests[0];
-        if (location - (next_floor as f64) * floor_height).abs() < 0.01 
+        if (location - (next_floor as f64) * floor_height).abs() < 0.01
             && velocity.abs() < 0.01 {
             velocity = 0.0;
             floor_requests.remove(0);
         }
-        
+
         // 5.3. Adjust motor control to process next floor request
-        
+
         // it will take t seconds to decelerate from velocity v as -1 m/s^2
         let t = velocity.abs() / 1.0;
-        
+
         // during which time, the carriage will travel d=t * v/2 meters
         // at an average velocity of v/2 before stopping
         let d = t * (velocity / 2.0);
-        
+
         // l = distance to next floor
         let l = (location - (next_floor as f64) * floor_height).abs();
-        
+
         let target_acceleration = {
             // are we going up?
             let going_up = location < (next_floor as f64) * floor_height;
-            
+
             // Do not exceed maximum velocity
             if velocity.abs() >= 5.0 {
                 // if we are going up and actually going up
                 // or we are going down and actually going down
-                if going_up && velocity > 0.0 
+                if going_up && velocity > 0.0
                     || !going_up && velocity < 0.0 {
                     0.0
                     // decelerate if going in wrong direction
@@ -129,7 +140,7 @@ pub fn run_simulation() {
                 }
             }
         };
-        
+
         let gravity_adjusted_acceleration = target_acceleration + 9.8;
         let target_force = gravity_adjusted_acceleration * 1200000.0;
         let target_voltage = target_force / 8.0;
@@ -140,12 +151,40 @@ pub fn run_simulation() {
             up_input_voltage = 0.0;
             down_input_voltage = target_voltage.abs();
         }
-        
-        // 5.4. Print realtime statistics 
-        
+
+        // 5.4. Print realtime statistics
+        print!("{}{}{}", clear::All, cursor::Goto(1, 1), cursor::Hide);
+        let carriage_floor = (location / floor_height).floor() as u64;
+        let carriage_floor = cmp::max(carriage_floor, 0);
+        let carriage_floor = cmp::min(carriage_floor, floor_count - 1);
+        let mut terminal_buffer = vec![b' '; (termwidth * termheight) as usize];
+        for ty in 0..floor_count {
+            terminal_buffer[ (ty * termwidth + 0) as usize ] = b'[';
+            terminal_buffer[ (ty * termwidth + 1) as usize ] = 
+                if (ty as u64) == ((floor_count - 1) - carriage_floor) { b'X'} else { b' ' };
+            terminal_buffer[ (ty * termwidth + 2 ) as usize ] = b']';
+            terminal_buffer[ (ty * termwidth + termwidth - 2) as usize ] = b'\r';
+            terminal_buffer[ (ty * termwidth + termwidth - 1) as usize ] = b'\n';
+        }
+        let stats = vec![
+            format!("Carriage at floor {}", carriage_floor + 1),
+            format!("Location          {}", location),
+            format!("Velocity          {}", velocity),
+            format!("Acceleration      {}", acceleration),
+            format!("Voltage [up-down] {}", up_input_voltage - down_input_voltage),
+        ];
+        for sy in 0..stats.len() {
+            for (sx, sc) in stats[sy].chars().enumerate() {
+                terminal_buffer[ sy * (termwidth as usize) + 6 + sx ] = sc as u8;
+            }
+        }
+        write!(stdout, "{}", String::from_utf8(terminal_buffer).unwrap());
+
+        stdout.flush().unwrap();
+
         thread::sleep(time::Duration::from_millis(10));
-    } 
-    
+    }
+
     // 6. Print summary
     println!("summary");
 }
