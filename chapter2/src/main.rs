@@ -24,6 +24,7 @@ pub fn run_simulation() {
     let mut floor_height: f64 = 0.0; // meters
     let mut floor_requests: Vec<u64> = Vec::new();
 
+
     // 4. Parse input and store as building description and floor requests
     let buffer = match env::args().nth(1) {
         Some(ref fp) if *fp == "-".to_string() => {
@@ -70,6 +71,10 @@ pub fn run_simulation() {
     let mut _stdout = io::stdout(); // lock once, instead of once per write
     let mut stdout = _stdout.lock().into_raw_mode().unwrap();
 
+    let mut record_location = Vec::new();
+    let mut record_velocity = Vec::new();
+    let mut record_acceleration = Vec::new();
+    let mut record_voltage = Vec::new();
 
     while  floor_requests.len() > 0 {
         // 5.1. Update location, velocity, and acceleration
@@ -77,6 +82,11 @@ pub fn run_simulation() {
         let dt = now.duration_since(prev_loop_time)
             .as_fractional_secs();
         prev_loop_time = now;
+
+        record_location.push(location);
+        record_velocity.push(velocity);
+        record_acceleration.push(acceleration);
+        record_voltage.push(up_input_voltage - down_input_voltage);
 
         location = location + velocity * dt;
         velocity = velocity + acceleration * dt;
@@ -185,8 +195,66 @@ pub fn run_simulation() {
         thread::sleep(time::Duration::from_millis(10));
     }
 
-    // 6. Print summary
-    println!("summary");
+    // 6. Calculate and print summary statistic
+    let record_location_N = record_location.len();
+    let record_location_sum: f64 = record_location.iter().sum();
+    let record_location_avg = record_location_sum / (record_location_N as f64);
+    let record_location_dev = (
+        record_location.clone().into_iter()
+            .map(|v| (v - record_location_avg).powi(2))
+            .fold(0.0, |a, b| a + b)
+            / (record_location_N as f64)
+        ).sqrt();
+
+    let record_velocity_N = record_velocity.len();
+    let record_velocity_sum: f64 = record_velocity.iter().sum();
+    let record_velocity_avg = record_velocity_sum / (record_velocity_N as f64);
+    let record_velocity_dev = (
+        record_velocity.clone().into_iter()
+            .map(|v| (v - record_velocity_avg).powi(2))
+            .fold(0.0, |a, b| a + b)
+            / (record_velocity_N as f64)
+        ).sqrt();
+
+    let record_acceleration_N = record_acceleration.len();
+    let record_acceleration_sum: f64 = record_acceleration.iter().sum();
+    let record_acceleration_avg = record_acceleration_sum / (record_acceleration_N as f64);
+    let record_acceleration_dev = (
+        record_acceleration.clone().into_iter()
+            .map(|v| (v - record_acceleration_avg).powi(2))
+            .fold(0.0, |a, b| a + b)
+            / (record_acceleration_N as f64)
+        ).sqrt();
+
+    let record_voltage_N = record_voltage.len();
+    let record_voltage_sum: f64 = record_voltage.iter().sum();
+    let record_voltage_avg = record_voltage_sum / (record_voltage_N as f64);
+    let record_voltage_dev = (
+        record_voltage.clone().into_iter()
+            .map(|v| (v - record_voltage_avg).powi(2))
+            .fold(0.0, |a, b| a + b)
+            / (record_voltage_N as f64)
+        ).sqrt();
+
+    write!(stdout, "{}{}{}", clear::All, cursor::Goto(1, 1), cursor::Show).unwrap();
+
+    write!(stdout, "Average of location {:.6}\r\n", record_location_avg);
+    write!(stdout, "Standard deviation of location {:.6}\r\n", record_location_dev);
+    write!(stdout, "\r\n");
+
+    write!(stdout, "Average of velocity {:.6}\r\n", record_velocity_avg);
+    write!(stdout, "Standard deviation of velocity {:.6}\r\n", record_velocity_dev);
+    write!(stdout, "\r\n");
+
+    write!(stdout, "Average of acceleration {:.6}\r\n", record_acceleration_avg);
+    write!(stdout, "Standard deviation of acceleration {:.6}\r\n", record_acceleration_dev);
+    write!(stdout, "\r\n");
+
+    write!(stdout, "Average of voltage {:.6}\r\n", record_voltage_avg);
+    write!(stdout, "Standard deviation of voltage {:.6}\r\n", record_voltage_dev);
+    write!(stdout, "\r\n");
+
+    stdout.flush().unwrap();
 }
 
 fn main() {
